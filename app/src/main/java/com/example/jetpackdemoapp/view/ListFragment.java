@@ -20,9 +20,6 @@ import butterknife.ButterKnife;
 
 public class ListFragment extends Fragment {
 
-    @BindView(R.id.floatingActionButton)
-    FloatingActionButton fab;
-
     public ListFragment() {
     }
 
@@ -34,15 +31,4 @@ public class ListFragment extends Fragment {
         return view;
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        fab.setOnClickListener(view1 -> { onGoToDetails(); });
-    }
-
-    private void onGoToDetails() {
-        ListFragmentDirections.ActionDetail action = ListFragmentDirections.actionDetail();
-        action.setDogUuid(5);
-        Navigation.findNavController(fab).navigate(action);
-    }
 }
