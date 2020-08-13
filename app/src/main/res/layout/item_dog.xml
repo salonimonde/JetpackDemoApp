@@ -9,7 +9,8 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="2"
-        android:paddingBottom="4dp"/>
+        android:paddingBottom="4dp"
+        android:src="@mipmap/ic_launcher"/>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -23,13 +24,15 @@
             android:id="@+id/name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Dog Name"/>
+            android:text="Dog Name"
+            style="@style/Title"/>
 
         <TextView
             android:id="@+id/lifespan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Dog Lifespan"/>
+            android:text="Dog Lifespan"
+            style="@style/Text"/>
 
     </LinearLayout>
 
