@@ -1,15 +1,25 @@
 package com.example.jetpackdemoapp.viewmodel;
 
 import android.app.Application;
+import android.os.AsyncTask;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.jetpackdemoapp.model.DogBreed;
+import com.example.jetpackdemoapp.model.DogDao;
+import com.example.jetpackdemoapp.model.DogDatabase;
+import com.example.jetpackdemoapp.model.DogsApiService;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.observers.DisposableSingleObserver;
+import io.reactivex.schedulers.Schedulers;
 
 public class ListViewModel extends AndroidViewModel {
 
@@ -17,30 +27,84 @@ public class ListViewModel extends AndroidViewModel {
     public MutableLiveData<Boolean> dogLoadError = new MutableLiveData<Boolean>();
     public MutableLiveData<Boolean> loading = new MutableLiveData<Boolean>();
 
+    private DogsApiService dogsApiService = new DogsApiService();
+
+    private CompositeDisposable disposable = new CompositeDisposable();
+
+    private AsyncTask<List<DogBreed>, Void, List<DogBreed>> insertTask;
+
     public ListViewModel(@NonNull Application application) {
         super(application);
     }
 
-    public void refresh(){
-        DogBreed dog1 = new DogBreed("1","corgi","15 years","","","","");
-        DogBreed dog2 = new DogBreed("2","rotwailler","10 years","","","","");
-        DogBreed dog3 = new DogBreed("3","labrador","13 years","","","","");
-        DogBreed dog4 = new DogBreed("3","labrador","13 years","","","","");
-        DogBreed dog5 = new DogBreed("3","labrador","13 years","","","","");
-        DogBreed dog6 = new DogBreed("3","labrador","13 years","","","","");
-        DogBreed dog7 = new DogBreed("3","labrador","13 years","","","","");
+    public void refresh() {
+        fetchFromRemote();
+    }
 
-        ArrayList<DogBreed> dogsList = new ArrayList<>();
-        dogsList.add(dog1);
-        dogsList.add(dog2);
-        dogsList.add(dog3);
-        dogsList.add(dog4);
-        dogsList.add(dog5);
-        dogsList.add(dog6);
-        dogsList.add(dog7);
+    private void fetchFromRemote() {
+        loading.setValue(true);
+        disposable.add(
+                dogsApiService.getDogs()
+                        .subscribeOn(Schedulers.newThread())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(new DisposableSingleObserver<List<DogBreed>>() {
+                            @Override
+                            public void onSuccess(List<DogBreed> dogBreeds) {
+                                insertTask = new InsertDogsTask();
+                                insertTask.execute(dogBreeds);
+                                Toast.makeText(getApplication(), "Dogs retrieved from endpoint", Toast.LENGTH_SHORT).show();
+                            }
 
-        dogs.setValue(dogsList);
+                            @Override
+                            public void onError(Throwable e) {
+                                dogLoadError.setValue(true);
+                                loading.setValue(false);
+                                e.printStackTrace();
+                            }
+                        })
+        );
+    }
+
+    private void dogsRetrieved(List<DogBreed> dogList) {
+        dogs.setValue(dogList);
         dogLoadError.setValue(false);
         loading.setValue(false);
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        disposable.clear();
+
+        if (insertTask != null){
+            insertTask.cancel(true);
+            insertTask = null;
+        }
+    }
+
+    private class InsertDogsTask extends AsyncTask<List<DogBreed>, Void, List<DogBreed>> {
+
+        @Override
+        protected List<DogBreed> doInBackground(List<DogBreed>... lists) {
+            List<DogBreed> list = lists[0];
+
+            DogDao dao = DogDatabase.getInstance(getApplication()).dogDao();
+            dao.deleteAllDogs();
+
+            ArrayList<DogBreed> newList = new ArrayList<>(list);
+            List<Long> result = dao.insertAll(newList.toArray(new DogBreed[0]));
+
+            int i = 0;
+            while (i < list.size()){
+                list.get(i).uuid = result.get(i).intValue();
+                ++i;
+            }
+            return list;
+        }
+
+        @Override
+        protected void onPostExecute(List<DogBreed> dogBreeds) {
+            dogsRetrieved(dogBreeds);
+        }
     }
 }
